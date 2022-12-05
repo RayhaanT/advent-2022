@@ -1,8 +1,34 @@
 use crate::Solution;
 
-pub fn solve(_input: String) -> Solution {
+fn unique(s: &Vec<char>) -> bool {
+    for i in 0..s.len() {
+        if s[i + 1..s.len()].contains(&s[i]) {
+            return false;
+        }
+    }
+    true
+}
+
+pub fn solve(input: String) -> Solution {
+    let mut start = 4;
+    let mut slice: Vec<char> = input[0..4].chars().collect();
+
+    while !unique(&slice) {
+        slice.push(input.chars().nth(start).unwrap());
+        slice.remove(0);
+        start += 1;
+    }
+    let ans1 = start.to_string();
+
+    slice = input[0..14].chars().collect();
+    while !unique(&slice) {
+        slice.push(input.chars().nth(start).unwrap());
+        slice.remove(0);
+        start += 1;
+    }
+
     Solution {
-        first: String::from("Incomplete"),
-        second: String::from("Incomplete"),
+        first: ans1,
+        second: start.to_string(),
     }
 }
