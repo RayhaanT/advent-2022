@@ -20,6 +20,7 @@ pub fn solve(input: String) -> Solution {
     }
     let ans1 = start.to_string();
 
+    start = 14;
     slice = input[0..14].chars().collect();
     while !unique(&slice) {
         slice.push(input.chars().nth(start).unwrap());
