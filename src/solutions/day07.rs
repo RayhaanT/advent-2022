@@ -8,40 +8,52 @@ struct File {
     size: u32,
 }
 
-fn getSize(filename: &String, filesystem: &HashMap<String, File>) -> u32 {
-    let file = filesystem.get(filename).unwrap();
-    file.children
-        .iter()
-        .map(|f| getSize(&filesystem.get(f).unwrap().path, filesystem))
-        .sum::<u32>()
-        + file.size
+fn get_size(
+    filename: &String,
+    filesystem: &HashMap<String, File>,
+    memo: &mut HashMap<String, u32>,
+) -> u32 {
+    match memo.get(filename) {
+        Some(i) => *i,
+        None => {
+            let file = filesystem.get(filename).unwrap();
+            let res = file
+                .children
+                .iter()
+                .map(|f| get_size(&filesystem.get(f).unwrap().path, filesystem, memo))
+                .sum::<u32>()
+                + file.size;
+            memo.insert(filename.clone(), res);
+            res
+        }
+    }
 }
 
 pub fn solve(input: String) -> Solution {
     let mut filesystem: HashMap<String, File> = HashMap::new();
     let commands: Vec<&str> = input.lines().collect();
     let mut line = 0;
-    let mut currentDir: String = String::from("");
+    let mut current_dir: String = String::from("");
 
     while line < commands.len() {
         let decomp: Vec<&str> = commands[line].split(" ").collect();
         match decomp[1] {
             "cd" => {
                 if decomp[2] == ".." {
-                    currentDir = filesystem.get(&currentDir).unwrap().parent.clone();
+                    current_dir = filesystem.get(&current_dir).unwrap().parent.clone();
                 } else {
-                    let oldDir = currentDir;
-                    if oldDir == String::from("") {
-                        currentDir = String::from("/");
-                    } else if oldDir == String::from("/") {
-                        currentDir = oldDir.clone() + decomp[2];
+                    let old_dir = current_dir;
+                    if old_dir == String::from("") {
+                        current_dir = String::from("/");
+                    } else if old_dir == String::from("/") {
+                        current_dir = old_dir.clone() + decomp[2];
                     } else {
-                        currentDir = oldDir.clone() + "/" + decomp[2];
+                        current_dir = old_dir.clone() + "/" + decomp[2];
                     }
 
-                    filesystem.entry(currentDir.clone()).or_insert(File {
-                        path: currentDir.clone(),
-                        parent: String::from(oldDir),
+                    filesystem.entry(current_dir.clone()).or_insert(File {
+                        path: current_dir.clone(),
+                        parent: String::from(old_dir),
                         children: Vec::new(),
                         size: 0,
                     });
@@ -52,26 +64,26 @@ pub fn solve(input: String) -> Solution {
                 line += 1;
                 while line < commands.len() && commands[line].chars().next().unwrap() != '$' {
                     let split: Vec<&str> = commands[line].split(" ").collect();
-                    let filename = if currentDir == String::from("/") {
+                    let filename = if current_dir == String::from("/") {
                         String::from("/") + split[1]
                     } else {
-                        currentDir.clone() + "/" + split[1]
+                        current_dir.clone() + "/" + split[1]
                     };
 
                     if split[0] == "dir" {
                         filesystem.entry(filename.clone()).or_insert(File {
                             path: filename.clone(),
-                            parent: currentDir.clone(),
+                            parent: current_dir.clone(),
                             children: Vec::new(),
                             size: 0,
                         });
 
                         filesystem
-                            .entry(currentDir.clone())
+                            .entry(current_dir.clone())
                             .and_modify(|f| f.children.push(filename));
                     } else {
                         filesystem
-                            .entry(currentDir.clone())
+                            .entry(current_dir.clone())
                             .and_modify(|f| f.size += split[0].parse::<u32>().unwrap());
                     }
                     line += 1;
@@ -81,7 +93,11 @@ pub fn solve(input: String) -> Solution {
         }
     }
 
-    let mut sizes: Vec<u32> = filesystem.keys().map(|k| getSize(k, &filesystem)).collect();
+    let mut memo: HashMap<String, u32> = HashMap::new();
+    let mut sizes: Vec<u32> = filesystem
+        .keys()
+        .map(|k| get_size(k, &filesystem, &mut memo))
+        .collect();
     sizes.sort();
     let root_size = sizes.last().unwrap();
     let max = 40000000;
