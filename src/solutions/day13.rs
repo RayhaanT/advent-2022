@@ -1,6 +1,8 @@
 use crate::Solution;
+use std::cmp::Ordering;
 
 // Maybe come back and do this again with Ord instead of compare_packets
+#[derive(Clone)]
 struct Packet {
     arr: Option<Vec<Packet>>,
     num: Option<u32>,
@@ -17,6 +19,26 @@ impl Packet {
             }
             print!("]");
         }
+    }
+}
+
+impl PartialEq for Packet {
+    fn eq(&self, other: &Self) -> bool {
+        compare_packets(self, other) == Ordering::Equal
+    }
+}
+
+impl Eq for Packet {}
+
+impl Ord for Packet {
+    fn cmp(&self, other: &Self) -> Ordering {
+        compare_packets(self, other)
+    }
+}
+
+impl PartialOrd for Packet {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -88,17 +110,21 @@ fn parse_packet(stream: &mut StringStream) -> Packet {
     }
 }
 
-fn compare_packets(left: &Packet, right: &Packet) -> Option<bool> {
-    left.print();
-    print!(" vs ");
-    right.print();
-    println!("");
+fn compare_packets(left: &Packet, right: &Packet) -> Ordering {
+    // left.print();
+    // print!(" vs ");
+    // right.print();
+    // println!("");
 
     if left.num.is_some() && right.num.is_some() {
         if left.num.unwrap() == right.num.unwrap() {
-            None
+            Ordering::Equal
         } else {
-            Some(left.num.unwrap() < right.num.unwrap())
+            if left.num.unwrap() < right.num.unwrap() {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
         }
     } else if left.arr.is_some() && right.arr.is_some() {
         let larr = left.arr.as_ref().unwrap();
@@ -106,14 +132,18 @@ fn compare_packets(left: &Packet, right: &Packet) -> Option<bool> {
         let min_length = usize::min(larr.len(), rarr.len());
 
         let tie_break = if rarr.len() == larr.len() {
-            None
+            Ordering::Equal
         } else {
-            Some(min_length == larr.len())
+            if min_length == larr.len() {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
         };
 
         for i in 0..min_length {
             let res = compare_packets(&larr[i], &rarr[i]);
-            if res.is_some() {
+            if res != Ordering::Equal {
                 return res;
             }
         }
@@ -145,41 +175,65 @@ fn compare_packets(left: &Packet, right: &Packet) -> Option<bool> {
 }
 
 pub fn solve(input: String) -> Solution {
-    let mut packets: Vec<(Packet, Packet)> = Vec::new();
+    let mut packets: Vec<Packet> = Vec::new();
     let lines: Vec<String> = input.lines().map(|l| l.to_string()).collect();
 
     for i in (0..lines.len()).step_by(3) {
-        packets.push((
-            parse_packet(&mut StringStream {
-                string: lines[i].clone(),
-                start: 0,
-            }),
-            parse_packet(&mut StringStream {
-                string: lines[i + 1].clone(),
-                start: 0,
-            }),
-        ));
+        packets.push(parse_packet(&mut StringStream {
+            string: lines[i].clone(),
+            start: 0,
+        }));
+        packets.push(parse_packet(&mut StringStream {
+            string: lines[i + 1].clone(),
+            start: 0,
+        }));
     }
 
-    for (left, right) in &packets {
-        left.print();
-        println!("");
-        right.print();
+    let mut first = 0;
+    for i in (0..packets.len()).step_by(2) {
+        if compare_packets(&packets[i], &packets[i + 1]) != Ordering::Greater {
+            first += (i / 2) + 1;
+        }
+    }
+
+    let two: Packet = Packet {
+        arr: Some(vec![Packet {
+            arr: None,
+            num: Some(2),
+        }]),
+        num: None,
+    };
+    let six: Packet = Packet {
+        arr: Some(vec![Packet {
+            arr: None,
+            num: Some(6),
+        }]),
+        num: None,
+    };
+
+    packets.push(two.clone());
+    packets.push(six.clone());
+
+    packets.sort();
+
+    let mut two_ind = None;
+    let mut six_ind = None;
+    for (ind, packet) in packets.iter().enumerate() {
+        if two_ind.is_none() && *packet == two {
+            two_ind = Some(ind + 1);
+        }
+        if six_ind.is_none() && *packet == six {
+            six_ind = Some(ind + 1);
+        }
+    }
+
+    for p in &packets {
+        p.print();
         println!("");
     }
 
     Solution {
-        first: packets
-            .iter()
-            .enumerate()
-            .fold(0, |res, (ind, (l, r))| {
-                res + if compare_packets(l, r).unwrap_or(true) {
-                    ind + 1
-                } else {
-                    0
-                }
-            })
-            .to_string(),
-        second: String::from("Incomplete"),
+        first: first.to_string(),
+        second: (two_ind.unwrap() * six_ind.unwrap()).to_string(),
     }
 }
