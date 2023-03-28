@@ -1,7 +1,6 @@
 use crate::Solution;
 use std::cmp::Ordering;
 
-// Maybe come back and do this again with Ord instead of compare_packets
 #[derive(Clone)]
 struct Packet {
     arr: Option<Vec<Packet>>,
@@ -227,10 +226,10 @@ pub fn solve(input: String) -> Solution {
         }
     }
 
-    for p in &packets {
-        p.print();
-        println!("");
-    }
+    // for p in &packets {
+    //     p.print();
+    //     println!("");
+    // }
 
     Solution {
         first: first.to_string(),
