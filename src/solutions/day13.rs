@@ -8,6 +8,7 @@ struct Packet {
 }
 
 impl Packet {
+    #[allow(dead_code)]
     fn print(&self) {
         if self.num.is_some() {
             print!("{},", self.num.unwrap());
