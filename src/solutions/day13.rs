@@ -2,22 +2,25 @@ use crate::Solution;
 use std::cmp::Ordering;
 
 #[derive(Clone)]
-struct Packet {
-    arr: Option<Vec<Packet>>,
-    num: Option<u32>,
+enum Packet {
+    Arr(Vec<Packet>),
+    Num(u32),
+    Empty,
 }
 
 impl Packet {
     #[allow(dead_code)]
     fn print(&self) {
-        if self.num.is_some() {
-            print!("{},", self.num.unwrap());
-        } else {
-            print!("[");
-            for p in self.arr.as_ref().unwrap() {
-                p.print();
+        match self {
+            Packet::Arr(vec) => {
+                print!("[");
+                for p in vec {
+                    p.print();
+                }
+                print!("]");
             }
-            print!("]");
+            Packet::Num(num) => print!("{},", num),
+            Packet::Empty => (),
         }
     }
 }
@@ -68,10 +71,7 @@ impl StringStream {
 
 fn parse_packet(stream: &mut StringStream) -> Packet {
     if stream.len() == 0 {
-        Packet {
-            arr: None,
-            num: None,
-        }
+        Packet::Empty
     } else if stream.peek() != '[' {
         let mut val: u32 = 0;
         let mut c = stream.next();
@@ -86,10 +86,7 @@ fn parse_packet(stream: &mut StringStream) -> Packet {
             stream.back();
         }
 
-        Packet {
-            arr: None,
-            num: Some(val),
-        }
+        Packet::Num(val)
     } else {
         stream.next();
         let mut arr: Vec<Packet> = Vec::new();
@@ -103,10 +100,7 @@ fn parse_packet(stream: &mut StringStream) -> Packet {
             }
         }
 
-        Packet {
-            arr: Some(arr),
-            num: None,
-        }
+        Packet::Arr(arr)
     }
 }
 
@@ -116,61 +110,47 @@ fn compare_packets(left: &Packet, right: &Packet) -> Ordering {
     // right.print();
     // println!("");
 
-    if left.num.is_some() && right.num.is_some() {
-        if left.num.unwrap() == right.num.unwrap() {
-            Ordering::Equal
-        } else {
-            if left.num.unwrap() < right.num.unwrap() {
-                Ordering::Less
-            } else {
-                Ordering::Greater
+    match left {
+        Packet::Empty => panic!("Cannot compare empty packets"),
+        Packet::Num(lnum) => match right {
+            Packet::Num(rnum) => {
+                if rnum == lnum {
+                    Ordering::Equal
+                } else if lnum < rnum {
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                }
             }
-        }
-    } else if left.arr.is_some() && right.arr.is_some() {
-        let larr = left.arr.as_ref().unwrap();
-        let rarr = right.arr.as_ref().unwrap();
-        let min_length = usize::min(larr.len(), rarr.len());
+            Packet::Arr(_) => compare_packets(&Packet::Arr(vec![Packet::Num(*lnum)]), right),
+            Packet::Empty => panic!("Cannot compare empty packets"),
+        },
+        Packet::Arr(larr) => match right {
+            Packet::Arr(rarr) => {
+                let min_length = usize::min(larr.len(), rarr.len());
 
-        let tie_break = if rarr.len() == larr.len() {
-            Ordering::Equal
-        } else {
-            if min_length == larr.len() {
-                Ordering::Less
-            } else {
-                Ordering::Greater
+                let tie_break = if rarr.len() == larr.len() {
+                    Ordering::Equal
+                } else {
+                    if min_length == larr.len() {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    }
+                };
+
+                for i in 0..min_length {
+                    let res = compare_packets(&larr[i], &rarr[i]);
+                    if res != Ordering::Equal {
+                        return res;
+                    }
+                }
+
+                tie_break
             }
-        };
-
-        for i in 0..min_length {
-            let res = compare_packets(&larr[i], &rarr[i]);
-            if res != Ordering::Equal {
-                return res;
-            }
-        }
-
-        tie_break
-    } else if left.num.is_some() {
-        compare_packets(
-            &Packet {
-                arr: Some(vec![Packet {
-                    arr: None,
-                    num: left.num,
-                }]),
-                num: None,
-            },
-            right,
-        )
-    } else {
-        compare_packets(
-            left,
-            &Packet {
-                arr: Some(vec![Packet {
-                    arr: None,
-                    num: right.num,
-                }]),
-                num: None,
-            },
-        )
+            Packet::Num(rnum) => compare_packets(left, &Packet::Arr(vec![Packet::Num(*rnum)])),
+            Packet::Empty => panic!("Cannot compare empty packets"),
+        },
     }
 }
 
@@ -196,20 +176,8 @@ pub fn solve(input: String) -> Solution {
         }
     }
 
-    let two: Packet = Packet {
-        arr: Some(vec![Packet {
-            arr: None,
-            num: Some(2),
-        }]),
-        num: None,
-    };
-    let six: Packet = Packet {
-        arr: Some(vec![Packet {
-            arr: None,
-            num: Some(6),
-        }]),
-        num: None,
-    };
+    let two = Packet::Num(2);
+    let six = Packet::Num(6);
 
     packets.push(two.clone());
     packets.push(six.clone());
