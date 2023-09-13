@@ -126,14 +126,15 @@ pub fn solve(input: String) -> Solution {
     }
 
     let mut open = vec![false; useful.len()];
-    let first = pressure(0, &paths, &rates, &mut open, 26);
-    for v in first.1 {
+    let first = pressure(0, &paths, &rates, &mut open, 30);
+    let second = pressure(0, &paths, &rates, &mut open, 26);
+    for v in second.1 {
         open[v] = true;
     }
-    let second = pressure(0, &paths, &rates, &mut open, 26);
+    let res = pressure(0, &paths, &rates, &mut open, 26).0 + second.0;
 
     Solution {
         first: first.0.to_string(),
-        second: (first.0 + second.0).to_string(),
+        second: res.to_string(),
     }
 }
